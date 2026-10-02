@@ -1,0 +1,41 @@
+### Health Check
+GET http://localhost:3000/api/health
+
+### Listar produtos
+GET http://localhost:3000/api/produtos
+
+### Listar com filtros
+GET http://localhost:3000/api/produtos?categoria=eletronicos&ativo=true
+
+### Cadastrar produto
+POST http://localhost:3000/api/produtos
+Content-Type: application/json
+
+{
+  "nome": "Fone de Ouvido Bluetooth",
+  "descricao": "Fone sem fio com cancelamento de ruído e bateria de 30h.",
+  "categoria": "eletronicos",
+  "preco": 249.9,
+  "estoque": 35
+}
+
+### Buscar produto por ID
+GET http://localhost:3000/api/produtos/1
+
+### Atualizar produto
+PUT http://localhost:3000/api/produtos/1
+Content-Type: application/json
+
+{
+  "preco": 199.9,
+  "estoque": 20
+}
+
+### Remover produto
+DELETE http://localhost:3000/api/produtos/1
+
+### Erro 400 (campos ausentes)
+POST http://localhost:3000/api/produtos
+Content-Type: application/json
+
+{ "nome": "X" }
