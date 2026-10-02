@@ -1,0 +1,38 @@
+{
+  "name": "api-catalogo-produtos",
+  "version": "1.0.0",
+  "description": "API RESTful de catálogo de produtos (Node.js, Express, TypeScript, Sequelize, PostgreSQL e Swagger)",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "db:migrate": "sequelize-cli db:migrate",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo",
+    "format:check": "prettier --check \"src/**/*.{ts,json}\"",
+    "format:fix": "prettier --write \"src/**/*.{ts,json}\""
+  },
+  "keywords": ["express", "sequelize", "swagger", "postgresql", "typescript"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "pg": "^8.16.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.0",
+    "@types/swagger-ui-express": "^4.1.8",
+    "prettier": "^3.6.0",
+    "sequelize-cli": "^6.6.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,640 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API Catálogo de Produtos",
+    "version": "1.0.0",
+    "description": "API RESTful para gerenciamento de um catálogo de produtos: cadastro, consulta com filtros, precificação e controle de estoque.\n\nStack: Node.js, Express, TypeScript, Sequelize e PostgreSQL."
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Servidor local de desenvolvimento"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Produtos",
+      "description": "Cadastro e gerenciamento dos produtos do catálogo"
+    }
+  ],
+  "paths": {
+    "/produtos": {
+      "get": {
+        "tags": ["Produtos"],
+        "summary": "Listar produtos",
+        "description": "Retorna todos os produtos cadastrados, ordenados por ID. Aceita filtros opcionais por categoria e por status ativo.",
+        "operationId": "listarProdutos",
+        "parameters": [
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "description": "Filtra pela categoria (ex.: eletronicos)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ativo",
+            "in": "query",
+            "required": false,
+            "description": "Filtra produtos ativos (true) ou inativos (false)",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de produtos retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Produto"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "nome": "Fone de Ouvido Bluetooth",
+                    "descricao": "Fone sem fio com cancelamento de ruído e bateria de 30h.",
+                    "categoria": "eletronicos",
+                    "preco": 249.9,
+                    "estoque": 35,
+                    "ativo": true,
+                    "createdAt": "2026-10-01T14:30:00.000Z",
+                    "updatedAt": "2026-10-01T14:30:00.000Z"
+                  },
+                  {
+                    "id": 2,
+                    "nome": "Caneca de Cerâmica 350ml",
+                    "descricao": null,
+                    "categoria": "casa",
+                    "preco": 39.9,
+                    "estoque": 120,
+                    "ativo": true,
+                    "createdAt": "2026-10-01T14:32:00.000Z",
+                    "updatedAt": "2026-10-01T14:32:00.000Z"
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Filtros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                },
+                "example": {
+                  "erro": "Filtros inválidos.",
+                  "detalhes": ["O filtro ativo deve ser true ou false."]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Erro ao listar produtos.",
+                  "detalhe": "connect ECONNREFUSED 127.0.0.1:5432"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Produtos"],
+        "summary": "Cadastrar um novo produto",
+        "description": "Cria um novo produto no catálogo. Os campos nome, categoria e preco são obrigatórios. estoque tem padrão 0 e ativo tem padrão true.",
+        "operationId": "criarProduto",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProdutoInput"
+              },
+              "example": {
+                "nome": "Fone de Ouvido Bluetooth",
+                "descricao": "Fone sem fio com cancelamento de ruído e bateria de 30h.",
+                "categoria": "eletronicos",
+                "preco": 249.9,
+                "estoque": 35,
+                "ativo": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produto cadastrado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Produto"
+                },
+                "example": {
+                  "id": 1,
+                  "nome": "Fone de Ouvido Bluetooth",
+                  "descricao": "Fone sem fio com cancelamento de ruído e bateria de 30h.",
+                  "categoria": "eletronicos",
+                  "preco": 249.9,
+                  "estoque": 35,
+                  "ativo": true,
+                  "createdAt": "2026-10-01T14:30:00.000Z",
+                  "updatedAt": "2026-10-01T14:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos ou campos obrigatórios ausentes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                },
+                "example": {
+                  "erro": "Dados inválidos.",
+                  "detalhes": [
+                    "O campo nome é obrigatório.",
+                    "O campo preco deve ser um número maior que 0."
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Erro ao cadastrar produto.",
+                  "detalhe": "connect ECONNREFUSED 127.0.0.1:5432"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/produtos/{id}": {
+      "get": {
+        "tags": ["Produtos"],
+        "summary": "Buscar produto por ID",
+        "description": "Retorna os dados detalhados de um produto específico.",
+        "operationId": "buscarProduto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID numérico do produto",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produto encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Produto"
+                },
+                "example": {
+                  "id": 1,
+                  "nome": "Fone de Ouvido Bluetooth",
+                  "descricao": "Fone sem fio com cancelamento de ruído e bateria de 30h.",
+                  "categoria": "eletronicos",
+                  "preco": 249.9,
+                  "estoque": 35,
+                  "ativo": true,
+                  "createdAt": "2026-10-01T14:30:00.000Z",
+                  "updatedAt": "2026-10-01T14:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "O ID informado deve ser um número inteiro positivo."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produto não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Produto não encontrado."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Erro ao buscar produto.",
+                  "detalhe": "connect ECONNREFUSED 127.0.0.1:5432"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Produtos"],
+        "summary": "Atualizar um produto",
+        "description": "Atualiza os dados de um produto existente. Envie apenas os campos que deseja alterar (ao menos um).",
+        "operationId": "atualizarProduto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID numérico do produto",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProdutoUpdateInput"
+              },
+              "example": {
+                "preco": 199.9,
+                "estoque": 20
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Produto atualizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Produto"
+                },
+                "example": {
+                  "id": 1,
+                  "nome": "Fone de Ouvido Bluetooth",
+                  "descricao": "Fone sem fio com cancelamento de ruído e bateria de 30h.",
+                  "categoria": "eletronicos",
+                  "preco": 199.9,
+                  "estoque": 20,
+                  "ativo": true,
+                  "createdAt": "2026-10-01T14:30:00.000Z",
+                  "updatedAt": "2026-10-01T15:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido ou dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                },
+                "example": {
+                  "erro": "Dados inválidos.",
+                  "detalhes": [
+                    "O campo estoque deve ser um número inteiro maior ou igual a 0."
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produto não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Produto não encontrado."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Erro ao atualizar produto.",
+                  "detalhe": "connect ECONNREFUSED 127.0.0.1:5432"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Produtos"],
+        "summary": "Remover um produto",
+        "description": "Remove permanentemente um produto do catálogo.",
+        "operationId": "removerProduto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID numérico do produto",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produto removido com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MensagemSucesso"
+                },
+                "example": {
+                  "mensagem": "Produto removido com sucesso.",
+                  "id": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "O ID informado deve ser um número inteiro positivo."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produto não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Produto não encontrado."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                },
+                "example": {
+                  "erro": "Erro ao remover produto.",
+                  "detalhe": "connect ECONNREFUSED 127.0.0.1:5432"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Produto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "nome": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120,
+            "example": "Fone de Ouvido Bluetooth"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fone sem fio com cancelamento de ruído e bateria de 30h."
+          },
+          "categoria": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "description": "Salva em minúsculas",
+            "example": "eletronicos"
+          },
+          "preco": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Preço em reais",
+            "example": 249.9
+          },
+          "estoque": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Quantidade em estoque",
+            "example": 35
+          },
+          "ativo": {
+            "type": "boolean",
+            "default": true,
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-01T14:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-01T14:30:00.000Z"
+          }
+        }
+      },
+      "ProdutoInput": {
+        "type": "object",
+        "required": ["nome", "categoria", "preco"],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120,
+            "example": "Fone de Ouvido Bluetooth"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fone sem fio com cancelamento de ruído e bateria de 30h."
+          },
+          "categoria": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "description": "Salva em minúsculas",
+            "example": "eletronicos"
+          },
+          "preco": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Preço em reais",
+            "example": 249.9
+          },
+          "estoque": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Quantidade em estoque",
+            "example": 35
+          },
+          "ativo": {
+            "type": "boolean",
+            "default": true,
+            "example": true
+          }
+        }
+      },
+      "ProdutoUpdateInput": {
+        "type": "object",
+        "minProperties": 1,
+        "description": "Todos os campos são opcionais, mas ao menos um deve ser enviado.",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120,
+            "example": "Fone de Ouvido Bluetooth"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fone sem fio com cancelamento de ruído e bateria de 30h."
+          },
+          "categoria": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "description": "Salva em minúsculas",
+            "example": "eletronicos"
+          },
+          "preco": {
+            "type": "number",
+            "format": "float",
+            "example": 199.9
+          },
+          "estoque": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 20
+          },
+          "ativo": {
+            "type": "boolean",
+            "default": true,
+            "example": true
+          }
+        }
+      },
+      "Erro": {
+        "type": "object",
+        "properties": {
+          "erro": {
+            "type": "string",
+            "example": "Produto não encontrado."
+          },
+          "detalhe": {
+            "type": "string",
+            "example": "Mensagem técnica do erro (apenas em 500)"
+          }
+        }
+      },
+      "ErroValidacao": {
+        "type": "object",
+        "properties": {
+          "erro": {
+            "type": "string",
+            "example": "Dados inválidos."
+          },
+          "detalhes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["O campo nome é obrigatório."]
+          }
+        }
+      },
+      "MensagemSucesso": {
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "type": "string",
+            "example": "Produto removido com sucesso."
+          },
+          "id": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      }
+    }
+  }
+}
