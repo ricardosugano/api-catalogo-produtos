@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "/api"
+      "url": "/api",
       "description": "Servidor local de desenvolvimento"
     }
   ],
