@@ -2,7 +2,7 @@ import { app } from './app';
 import { sequelize } from './config/database';
 import './models/Produto';
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = String(process.env.PORT) || 3001;
 
 async function main(): Promise<void> {
   try {
