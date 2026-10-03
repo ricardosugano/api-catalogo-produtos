@@ -1,22 +1,37 @@
-# 1. Imagem base
-FROM node:22-alpine
-
-# 2. Configura o pnpm
-ENV PNPM_HOME="/root/.local/share/pnpm"
+# ---------- Base: Node + pnpm ----------
+FROM node:22-alpine AS base
+ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN npm install -g pnpm
-
-# 3. Diretório de trabalho
+RUN corepack enable
 WORKDIR /app
 
-# 4. Instala as dependências
-COPY package.json ./
-RUN pnpm install
+# ---------- Todas as dependências (para compilar) ----------
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# 5. Copia o restante do código
-COPY . .
+# ---------- Build do TypeScript ----------
+FROM deps AS build
+COPY tsconfig.json ./
+COPY src ./src
+RUN pnpm build
 
+# ---------- Somente dependências de produção ----------
+FROM base AS prod-deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+
+# ---------- Imagem final (enxuta) ----------
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --chown=node:node package.json .sequelizerc ./
+COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+# Arquivos usados pelo sequelize-cli para rodar as migrations
+COPY --chown=node:node src/config/config.cjs ./src/config/config.cjs
+COPY --chown=node:node src/migrations ./src/migrations
+USER node
 EXPOSE 3000
-
-# 6. Roda as migrations e sobe o servidor em modo dev
-CMD ["sh", "-c", "pnpm db:migrate && pnpm dev"]
+# Aplica as migrations e sobe o servidor compilado
+CMD ["sh", "-c", "node_modules/.bin/sequelize-cli db:migrate && node dist/server.js"]

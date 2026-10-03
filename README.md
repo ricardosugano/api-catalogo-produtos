@@ -1,6 +1,6 @@
 # 🛒 API Catálogo de Produtos
 
-API RESTful para gerenciamento de um catálogo de produtos, desenvolvida para a atividade **AT1 – Laboratório de Desenvolvimento Web (LDW)**.
+API RESTful para gerenciamento de um catálogo de produtos, desenvolvida na disciplina de **Laboratório de Desenvolvimento Web (LDW)** e evoluída na **AT1 de Integração e Entrega Contínua (IEC)** com Docker, Docker Compose, ESLint, Prettier, Husky e GitHub Actions.
 
 Permite cadastrar, listar (com filtros), consultar, atualizar e remover produtos, controlando preço e estoque, com persistência em **PostgreSQL** e documentação interativa em **Swagger UI**.
 
@@ -10,20 +10,24 @@ Permite cadastrar, listar (com filtros), consultar, atualizar e remover produtos
 - Sequelize ORM + PostgreSQL (local via Docker ou Supabase)
 - sequelize-cli (migrations)
 - Swagger UI (`swagger-ui-express` + `swagger.json` OpenAPI 3)
-- CORS, dotenv, pnpm, Docker Compose
+- CORS, dotenv, pnpm
+- Docker (Dockerfile multi-stage) e Docker Compose
+- ESLint + Prettier (qualidade e formatação)
+- Husky (hook de `pre-commit`)
+- GitHub Actions (integração contínua)
 
 ## Entidade `Produto`
 
-| Campo                     | Tipo (Sequelize) | Obrigatório | Descrição                                  |
-| ------------------------- | ---------------- | ----------- | ------------------------------------------ |
-| `id`                      | INTEGER (PK)     | automático  | Identificador                              |
-| `nome`                    | STRING(120)      | sim         | Nome do produto                            |
-| `descricao`               | TEXT             | não         | Descrição detalhada                        |
-| `categoria`               | STRING(50)       | sim         | Categoria (salva em minúsculas)            |
-| `preco`                   | DECIMAL(10,2)    | sim         | Preço em reais                             |
-| `estoque`                 | INTEGER          | não         | Quantidade em estoque (padrão `0`)         |
-| `ativo`                   | BOOLEAN          | não         | Produto ativo no catálogo (padrão `true`)  |
-| `createdAt` / `updatedAt` | DATE             | automático  | Auditoria                                  |
+| Campo                     | Tipo (Sequelize) | Obrigatório | Descrição                                 |
+| ------------------------- | ---------------- | ----------- | ----------------------------------------- |
+| `id`                      | INTEGER (PK)     | automático  | Identificador                             |
+| `nome`                    | STRING(120)      | sim         | Nome do produto                           |
+| `descricao`               | TEXT             | não         | Descrição detalhada                       |
+| `categoria`               | STRING(50)       | sim         | Categoria (salva em minúsculas)           |
+| `preco`                   | DECIMAL(10,2)    | sim         | Preço em reais                            |
+| `estoque`                 | INTEGER          | não         | Quantidade em estoque (padrão `0`)        |
+| `ativo`                   | BOOLEAN          | não         | Produto ativo no catálogo (padrão `true`) |
+| `createdAt` / `updatedAt` | DATE             | automático  | Auditoria                                 |
 
 ## Estrutura do projeto (MVC)
 
@@ -62,7 +66,7 @@ cp .env.example .env
 ```
 
 - **PostgreSQL local:** os valores padrão do `.env.example` já funcionam com o Docker Compose (`DB_SSL=false`).
-- **Supabase:** troque `DB_HOST`, `DB_USER` e `DB_PASSWORD` pelos dados do painel do Supabase (*Project Settings → Database*) e use `DB_SSL=true`.
+- **Supabase:** troque `DB_HOST`, `DB_USER` e `DB_PASSWORD` pelos dados do painel do Supabase (_Project Settings → Database_) e use `DB_SSL=true`.
 
 ### 3. Subir o banco de dados (somente para uso local)
 
@@ -92,22 +96,36 @@ Acesse:
 ### Rodando tudo com Docker
 
 ```bash
-docker compose up --build
+cp .env.example .env
+docker compose up -d --build
+docker compose ps
 ```
 
-Sobe o PostgreSQL e a API, roda as migrations e inicia o servidor na porta 3000.
+Sobe o PostgreSQL (com volume `pgdata` para persistir os dados) e a API. A API só inicia depois que o banco passa no healthcheck, aplica as migrations automaticamente e fica disponível em http://localhost:3000.
+
+Teste rápido:
+
+```bash
+curl http://localhost:3000/api/health
+curl -X POST http://localhost:3000/api/produtos -H "Content-Type: application/json" -d '{"nome":"Fone Bluetooth","categoria":"eletronicos","preco":249.9,"estoque":35}'
+curl http://localhost:3000/api/produtos
+```
+
+Comandos úteis: `docker compose logs -f api` (logs da API), `docker compose down` (para os contêineres, mantendo os dados) e `docker compose down -v` (apaga também o volume do banco).
+
+> Se já houver um PostgreSQL rodando na porta 5432 da sua máquina, defina `DB_PORT_HOST=5433` no `.env`.
 
 ## Endpoints
 
 Base URL: `http://localhost:3000/api`
 
-| Método | Rota            | Descrição                                   | Sucesso |
-| ------ | --------------- | ------------------------------------------- | ------- |
-| GET    | `/produtos`     | Lista os produtos (filtros opcionais)       | 200     |
-| GET    | `/produtos/:id` | Busca um produto por ID                     | 200     |
-| POST   | `/produtos`     | Cadastra um novo produto                    | 201     |
-| PUT    | `/produtos/:id` | Atualiza um produto (parcial)               | 200     |
-| DELETE | `/produtos/:id` | Remove um produto                           | 200     |
+| Método | Rota            | Descrição                             | Sucesso |
+| ------ | --------------- | ------------------------------------- | ------- |
+| GET    | `/produtos`     | Lista os produtos (filtros opcionais) | 200     |
+| GET    | `/produtos/:id` | Busca um produto por ID               | 200     |
+| POST   | `/produtos`     | Cadastra um novo produto              | 201     |
+| PUT    | `/produtos/:id` | Atualiza um produto (parcial)         | 200     |
+| DELETE | `/produtos/:id` | Remove um produto                     | 200     |
 
 **Filtros da listagem:** `GET /produtos?categoria=eletronicos&ativo=true`
 
@@ -129,11 +147,25 @@ O arquivo `requests/requests.http` tem exemplos de todas as requisições (exten
 
 ## Scripts
 
-| Comando                | Descrição                                  |
-| ---------------------- | ------------------------------------------ |
-| `pnpm dev`             | Servidor em modo desenvolvimento (watch)   |
-| `pnpm build`           | Compila o TypeScript para `dist/`          |
-| `pnpm start`           | Roda a versão compilada (`dist/server.js`) |
-| `pnpm type-check`      | Verifica os tipos sem gerar arquivos       |
-| `pnpm db:migrate`      | Executa as migrations                      |
-| `pnpm db:migrate:undo` | Desfaz a última migration                  |
+| Comando                | Descrição                                       |
+| ---------------------- | ----------------------------------------------- |
+| `pnpm dev`             | Servidor em modo desenvolvimento (watch)        |
+| `pnpm build`           | Compila o TypeScript para `dist/`               |
+| `pnpm start`           | Roda a versão compilada (`dist/server.js`)      |
+| `pnpm lint`            | Análise estática com ESLint                     |
+| `pnpm lint:fix`        | Corrige automaticamente o que o ESLint permitir |
+| `pnpm format`          | Formata o código com Prettier                   |
+| `pnpm format:check`    | Verifica se o código está formatado             |
+| `pnpm typecheck`       | Checagem estrita de tipos (`tsc --noEmit`)      |
+| `pnpm db:migrate`      | Executa as migrations                           |
+| `pnpm db:migrate:undo` | Desfaz a última migration                       |
+
+## Qualidade de código e CI
+
+**Husky (pre-commit):** ao rodar `pnpm install`, o Husky é ativado automaticamente. Antes de cada commit, o hook em `.husky/pre-commit` executa `pnpm lint`, `pnpm format:check` e `pnpm typecheck`. Se qualquer um falhar, o commit é bloqueado.
+
+**GitHub Actions:** o workflow `.github/workflows/ci.yml` roda a cada `push` (e em pull requests) com os passos: checkout, configuração do pnpm e do Node.js 22, instalação das dependências, lint, verificação de formatação, checagem de tipos e build.
+
+## Docker
+
+O `Dockerfile` usa build multi-stage: um estágio instala todas as dependências e compila o TypeScript, outro instala somente as dependências de produção, e a imagem final contém apenas `dist/`, as dependências de produção e os arquivos das migrations, rodando com o usuário `node` (sem root). O `.dockerignore` exclui `node_modules`, `.git`, `.env`, `dist` e arquivos temporários.

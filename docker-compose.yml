@@ -1,20 +1,25 @@
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: pg-catalogo-produtos
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-postgres}
     ports:
-      - '5432:5432'
+      - '${DB_PORT_HOST:-5432}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-postgres}',
+        ]
       interval: 3s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
   api:
     build:
@@ -22,23 +27,20 @@ services:
       dockerfile: Dockerfile
     container_name: api-catalogo-produtos
     ports:
-      - '3000:3000'
+      - '${PORT:-3000}:3000'
     environment:
-      - PORT=3000
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_SSL=false
-      - CHOKIDAR_USEPOLLING=true
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-postgres}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_SSL: 'false'
+      DB_SYNC: 'false'
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./:/app
-      - api_node_modules:/app/node_modules
+    restart: unless-stopped
 
 volumes:
   pgdata:
-  api_node_modules:

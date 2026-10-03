@@ -6,14 +6,25 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "type-check": "tsc --noEmit",
     "start": "node dist/server.js",
+    "start:prod": "sequelize-cli db:migrate && node dist/server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
-    "format:check": "prettier --check \"src/**/*.{ts,json}\"",
-    "format:fix": "prettier --write \"src/**/*.{ts,json}\""
+    "prepare": "husky"
   },
-  "keywords": ["express", "sequelize", "swagger", "postgresql", "typescript"],
+  "keywords": [
+    "express",
+    "sequelize",
+    "swagger",
+    "postgresql",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -23,16 +34,23 @@
     "pg": "^8.16.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
+    "sequelize-cli": "^6.6.5",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^22.15.0",
     "@types/swagger-ui-express": "^4.1.8",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "husky": "^9.1.7",
     "prettier": "^3.6.0",
-    "sequelize-cli": "^6.6.3",
     "tsx": "^4.20.0",
-    "typescript": "^5.8.3"
-  }
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.71.0"
+  },
+  "packageManager": "pnpm@10.34.6"
 }
