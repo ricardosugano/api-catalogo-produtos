@@ -15,7 +15,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     mensagem: 'API Catálogo de Produtos rodando com sucesso.',
-    versao: '1.0.0',
+    versao: '1.1.0',
     ambiente: process.env.NODE_ENV || 'development',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
