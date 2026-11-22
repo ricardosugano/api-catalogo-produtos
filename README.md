@@ -1,6 +1,9 @@
 # 🛒 API Catálogo de Produtos
 
-API RESTful para gerenciamento de um catálogo de produtos, desenvolvida na disciplina de **Laboratório de Desenvolvimento Web (LDW)** e evoluída na **AT1 de Integração e Entrega Contínua (IEC)** com Docker, Docker Compose, ESLint, Prettier, Husky e GitHub Actions.
+API RESTful para gerenciamento de um catálogo de produtos, desenvolvida na disciplina de **Laboratório de Desenvolvimento Web (LDW)** e evoluída na **AT1 de Integração e Entrega Contínua (IEC)** com Docker, Docker Compose, ESLint, Prettier, Husky e GitHub Actions, e na **AT2 de IEC** com entrega contínua no Render via Deploy Hook.
+
+> 🌐 **API em produção (Render):** https://api-catalogo-produtos-40cy.onrender.com/api/health
+> 📄 **Swagger em produção:** https://api-catalogo-produtos-40cy.onrender.com/api-docs
 
 Permite cadastrar, listar (com filtros), consultar, atualizar e remover produtos, controlando preço e estoque, com persistência em **PostgreSQL** e documentação interativa em **Swagger UI**.
 
@@ -164,8 +167,30 @@ O arquivo `requests/requests.http` tem exemplos de todas as requisições (exten
 
 **Husky (pre-commit):** ao rodar `pnpm install`, o Husky é ativado automaticamente. Antes de cada commit, o hook em `.husky/pre-commit` executa `pnpm lint`, `pnpm format:check` e `pnpm typecheck`. Se qualquer um falhar, o commit é bloqueado.
 
-**GitHub Actions:** o workflow `.github/workflows/ci.yml` roda a cada `push` (e em pull requests) com os passos: checkout, configuração do pnpm e do Node.js 22, instalação das dependências, lint, verificação de formatação, checagem de tipos e build.
+**GitHub Actions (CI):** o workflow `.github/workflows/ci.yml` roda em pushes para outras branches e em pull requests, com os passos: checkout, configuração do pnpm e do Node.js 22, instalação das dependências, lint, verificação de formatação, checagem de tipos e build.
+
+## Entrega contínua (CI/CD) no Render
+
+O workflow `.github/workflows/deploy.yml` roda a cada `push` na branch `main`, em três jobs encadeados (cada um só começa se o anterior passar, via `needs`):
+
+1. **CI** – checkout, pnpm + Node.js 22, instalação das dependências, lint, Prettier, `tsc --noEmit` e build.
+2. **Docker** – `docker build` da imagem de produção, para garantir que o contêiner monta sem erros.
+3. **Deploy** – `curl -X POST` no Deploy Hook do Render (guardado no secret `RENDER_DEPLOY_HOOK_URL`). O passo confere o status HTTP e falha o pipeline se não for `200` ou `201`.
+
+```
+push na main → CI (lint/tipos/build) → docker build → curl POST no Deploy Hook → Render faz o deploy → /api/health
+```
+
+### Configuração no Render
+
+- **Web Service** conectado a este repositório, com **Runtime: Docker**.
+- **Auto-Deploy: No** – assim um commit só vai para produção depois de passar pela esteira do GitHub Actions.
+- **Health Check Path:** `/api/health`.
+- **Variáveis de ambiente:** `NODE_ENV=production`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL`. A porta (`PORT`) é fornecida pelo próprio Render e lida em `process.env.PORT || 3000`.
+- **Deploy Hook:** URL gerada em _Settings → Deploy Hook_, cadastrada no GitHub em _Settings → Secrets and variables → Actions_ com o nome `RENDER_DEPLOY_HOOK_URL`.
+
+Ao iniciar, o contêiner aplica as migrations (`sequelize-cli db:migrate`) e sobe o servidor compilado (`node dist/server.js`).
 
 ## Docker
 
-O `Dockerfile` usa build multi-stage: um estágio instala todas as dependências e compila o TypeScript, outro instala somente as dependências de produção, e a imagem final contém apenas `dist/`, as dependências de produção e os arquivos das migrations, rodando com o usuário `node` (sem root). O `.dockerignore` exclui `node_modules`, `.git`, `.env`, `dist` e arquivos temporários.
+O `Dockerfile` usa build multi-stage: um estágio instala todas as dependências e compila o TypeScript, outro instala somente as dependências de produção, e a imagem final contém apenas `dist/`, as dependências de produção e os arquivos das migrations, rodando com o usuário `node` (sem root). O `.dockerignore` exclui `node_modules`, `.git`, `.env`, `dist`, arquivos de teste e arquivos temporários.

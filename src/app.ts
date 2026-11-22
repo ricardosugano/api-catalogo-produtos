@@ -10,11 +10,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check
+// Health check (usado pelo Render no "Health Check Path")
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({
-    status: 'OK',
+    status: 'ok',
     mensagem: 'API Catálogo de Produtos rodando com sucesso.',
+    versao: '1.0.0',
+    ambiente: process.env.NODE_ENV || 'development',
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
 });

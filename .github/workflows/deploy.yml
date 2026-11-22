@@ -1,0 +1,78 @@
+name: CI/CD - Deploy no Render
+
+# Roda a cada push na branch main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ---------- 1. Integração Contínua ----------
+  ci:
+    name: CI - Lint, Typecheck e Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (ESLint)
+        run: pnpm lint
+
+      - name: Formatação (Prettier)
+        run: pnpm format:check
+
+      - name: Checagem de tipos (tsc --noEmit)
+        run: pnpm typecheck
+
+      - name: Build do TypeScript
+        run: pnpm build
+
+  # ---------- 2. Validação do contêiner ----------
+  docker:
+    name: CD - Build da imagem Docker
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Build da imagem Docker
+        run: docker build -t api-catalogo-produtos:${{ github.sha }} .
+
+  # ---------- 3. Implantação contínua (Deploy Hook do Render) ----------
+  deploy:
+    name: Deploy - Disparo do Deploy Hook no Render
+    runs-on: ubuntu-latest
+    needs: [ci, docker]
+    steps:
+      - name: Disparar deploy no Render (curl POST)
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Erro: o secret RENDER_DEPLOY_HOOK_URL não está configurado."
+            exit 1
+          fi
+
+          STATUS=$(curl -s -o resposta.json -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
+          echo "Status HTTP retornado pelo Render: $STATUS"
+          cat resposta.json; echo
+
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ]; then
+            echo "Falha ao disparar o deploy no Render."
+            exit 1
+          fi
+
+          echo "Deploy disparado com sucesso no Render (commit ${GITHUB_SHA::7})."

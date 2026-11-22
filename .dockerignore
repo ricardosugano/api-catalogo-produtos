@@ -14,6 +14,13 @@ coverage
 .pnpm-store
 .DS_Store
 tmp
+
+# Testes
+**/*.test.ts
+**/*.spec.ts
+**/__tests__
+tests
+test
 requests
 Dockerfile
 docker-compose.yml
